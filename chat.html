@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>OpenBox Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    :root {
+      --bg: #000000;
+      --bg-rgb: 0,0,0;
+      --surface: #0a0a0a;
+      --surface-2: #111111;
+      --surface-3: #1a1a1a;
+      --text: #ffffff;
+      --text-2: #b0b0b0;
+      --text-3: #555555;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.15);
+      --accent: #ffffff;
+      --accent-glow: rgba(255,255,255,0.08);
+      --error: #ff4444;
+      --success: #00c853;
+      --warning: #ff9100;
+      --info: #448aff;
+      --sidebar-width: 280px;
+      --header-height: 60px;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    [data-theme="light"] {
+      --bg: #ffffff;
+      --bg-rgb: 255,255,255;
+      --surface: #f8f8f8;
+      --surface-2: #f0f0f0;
+      --surface-3: #e8e8e8;
+      --text: #000000;
+      --text-2: #555555;
+      --text-3: #888888;
+      --border: rgba(0,0,0,0.08);
+      --border-hover: rgba(0,0,0,0.15);
+      --accent: #000000;
+      --accent-glow: rgba(0,0,0,0.05);
+      --error: #d32f2f;
+      --success: #2e7d32;
+      --warning: #ed6c02;
+      --info: #1565c0;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); height: 100%; overflow: hidden; transition: background 0.5s ease, color 0.5s ease; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+
+    /* ===== ORBS ===== */
+    .orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.25; animation: orbDrift 25s ease-in-out infinite; }
+    .orb-1 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%); top: -150px; right: -100px; }
+    .orb-2 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(200,200,200,0.05) 0%, transparent 70%); bottom: -100px; left: -100px; animation-delay: -8s; animation-duration: 30s; }
+    .orb-3 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 70%); top: 40%; left: 60%; animation-delay: -16s; animation-duration: 35s; }
+    [data-theme="light"] .orb-1 { background: radial-gradient(circle, rgba(0,0,0,0.03) 0%, transparent 70%); }
+    [data-theme="light"] .orb-2 { background: radial-gradient(circle, rgba(0,0,0,0.02) 0%, transparent 70%); }
+    @keyframes orbDrift { 0%,100%{transform:translate(0,0)scale(1)} 33%{transform:translate(40px,-30px)scale(1.05)} 66%{transform:translate(-20px,20px)scale(0.95)} }
+
+    /* ===== APP LAYOUT ===== */
+    .app { display: flex; height: 100vh; height: 100dvh; position: relative; z-index: 1; }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar { width: var(--sidebar-width); height: 100%; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: var(--transition); position: relative; z-index: 10; }
+    .sidebar-header { padding: 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.75rem; }
+    .sidebar-logo { width: 32px; height: 32px; flex-shrink: 0; }
+    .sidebar-logo svg { width: 100%; height: 100%; }
+    .sidebar-title { font-weight: 700; font-size: 1.1rem; letter-spacing: -0.02em; }
+    .new-chat-btn { margin: 0.75rem 1rem; padding: 0.625rem 1rem; background: var(--text); color: var(--bg); border: 1px solid var(--text); border-radius: var(--radius-sm); font-size: 0.875rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: var(--transition); font-family: inherit; }
+    .new-chat-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .sidebar-section { padding: 0.5rem 0; flex: 1; overflow-y: auto; overflow-x: hidden; }
+    .sidebar-label { padding: 0.5rem 1rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
+    .chat-history { list-style: none; padding: 0 0.5rem; }
+    .chat-item { display: flex; align-items: center; gap: 0.625rem; padding: 0.625rem 0.75rem; border-radius: var(--radius-sm); cursor: pointer; transition: var(--transition); margin-bottom: 2px; position: relative; user-select: none; }
+    .chat-item:hover { background: var(--surface-2); }
+    .chat-item.active { background: var(--surface-3); }
+    .chat-item-icon { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-3); }
+    .chat-item-text { flex: 1; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-2); }
+    .chat-item.active .chat-item-text { color: var(--text); }
+    .chat-item-actions { display: none; gap: 0.25rem; }
+    .chat-item:hover .chat-item-actions { display: flex; }
+    .chat-item-btn { width: 24px; height: 24px; border-radius: 6px; border: none; background: transparent; color: var(--text-3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+    .chat-item-btn:hover { background: var(--surface-3); color: var(--text); }
+    .sidebar-footer { padding: 0.75rem; border-top: 1px solid var(--border); }
+    .settings-group { margin-bottom: 0.75rem; }
+    .settings-label { font-size: 0.75rem; color: var(--text-3); margin-bottom: 0.375rem; display: block; }
+    .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; }
+    .settings-row span { font-size: 0.875rem; color: var(--text-2); }
+    .toggle { width: 40px; height: 22px; background: var(--surface-3); border-radius: 11px; position: relative; cursor: pointer; transition: var(--transition); border: 1px solid var(--border); }
+    .toggle.active { background: var(--text); border-color: var(--text); }
+    .toggle-knob { width: 16px; height: 16px; background: var(--bg); border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: var(--transition); }
+    .toggle.active .toggle-knob { left: 20px; background: var(--bg); }
+    .user-profile { display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem; border-radius: var(--radius-sm); cursor: pointer; transition: var(--transition); }
+    .user-profile:hover { background: var(--surface-2); }
+    .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--surface-3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem; flex-shrink: 0; }
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 0.875rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-email { font-size: 0.75rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ===== MAIN ===== */
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+    .header { height: var(--header-height); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; background: rgba(var(--bg-rgb), 0.8); backdrop-filter: blur(20px); position: relative; z-index: 5; }
+    .header-left, .header-right { display: flex; align-items: center; gap: 0.75rem; }
+    .header-btn { width: 36px; height: 36px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+    .header-btn:hover { border-color: var(--border-hover); background: var(--surface-2); }
+    .header-title { font-size: 0.95rem; font-weight: 600; color: var(--text-2); }
+    .mode-badge { display: flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.875rem; border-radius: 100px; font-size: 0.8rem; font-weight: 600; background: var(--surface-2); border: 1px solid var(--border); transition: var(--transition); }
+    .mode-badge.instant { color: var(--success); border-color: rgba(0,200,83,0.3); background: rgba(0,200,83,0.06); }
+    .mode-badge.thinking { color: var(--warning); border-color: rgba(255,145,0,0.3); background: rgba(255,145,0,0.06); }
+    .mode-badge.search { color: var(--info); border-color: rgba(68,138,255,0.3); background: rgba(68,138,255,0.06); }
+
+    /* ===== MESSAGES ===== */
+    .messages-container { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 1.5rem 0; scroll-behavior: smooth; }
+    .messages-wrapper { max-width: 800px; margin: 0 auto; padding: 0 1.25rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+    /* Welcome */
+    .welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; animation: fadeIn 0.8s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    .welcome-logo { width: 80px; height: 80px; margin-bottom: 1.5rem; position: relative; }
+    .welcome-logo svg { width: 100%; height: 100%; filter: drop-shadow(0 0 30px rgba(255,255,255,0.08)); }
+    .welcome-logo::before { content:''; position:absolute; inset:-15px; background:radial-gradient(circle,rgba(255,255,255,0.06) 0%,transparent 70%); border-radius:50%; animation: pulseGlow 4s ease-in-out infinite; }
+    @keyframes pulseGlow { 0%,100%{opacity:0.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.1)} }
+    .welcome h2 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+    .welcome p { color: var(--text-2); font-size: 1rem; max-width: 400px; margin-bottom: 2rem; line-height: 1.5; }
+    .suggestion-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; max-width: 500px; }
+    .chip { padding: 0.625rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 100px; font-size: 0.875rem; color: var(--text-2); cursor: pointer; transition: var(--transition); font-family: inherit; }
+    .chip:hover { border-color: var(--border-hover); background: var(--surface-2); color: var(--text); transform: translateY(-1px); }
+
+    /* Message */
+    .message { display: flex; gap: 1rem; animation: msgIn 0.4s cubic-bezier(0.16,1,0.3,1) forwards; opacity: 0; transform: translateY(10px); }
+    @keyframes msgIn { to{opacity:1;transform:translateY(0)} }
+    .message.user { flex-direction: row-reverse; }
+    .msg-avatar { width: 32px; height: 32px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem; font-weight: 600; margin-top: 2px; }
+    .message.user .msg-avatar { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .msg-content { flex: 1; min-width: 0; max-width: calc(100% - 48px); }
+    .msg-bubble { padding: 1rem 1.25rem; border-radius: var(--radius); font-size: 0.95rem; line-height: 1.6; word-wrap: break-word; }
+    .message.ai .msg-bubble { background: var(--surface); border: 1px solid var(--border); }
+    .message.user .msg-bubble { background: var(--text); color: var(--bg); margin-left: auto; border-radius: var(--radius) var(--radius) 4px var(--radius); }
+    .msg-meta { font-size: 0.7rem; color: var(--text-3); margin-top: 0.375rem; display: flex; align-items: center; gap: 0.5rem; }
+    .message.user .msg-meta { justify-content: flex-end; }
+    .msg-image { max-width: 300px; max-height: 300px; border-radius: var(--radius-sm); margin-top: 0.5rem; border: 1px solid var(--border); }
+
+    /* Markdown */
+    .markdown-content p { margin-bottom: 0.75rem; }
+    .markdown-content p:last-child { margin-bottom: 0; }
+    .markdown-content strong { font-weight: 600; }
+    .markdown-content em { font-style: italic; }
+    .markdown-content ul, .markdown-content ol { margin: 0.75rem 0; padding-left: 1.5rem; }
+    .markdown-content li { margin-bottom: 0.375rem; }
+    .markdown-content blockquote { border-left: 3px solid var(--text-3); padding-left: 1rem; margin: 0.75rem 0; color: var(--text-2); }
+    .markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4 { margin: 1.25rem 0 0.75rem; font-weight: 600; }
+    .markdown-content h1 { font-size: 1.3rem; }
+    .markdown-content h2 { font-size: 1.15rem; }
+    .markdown-content h3 { font-size: 1rem; }
+    .markdown-content a { color: var(--info); text-decoration: none; }
+    .markdown-content a:hover { text-decoration: underline; }
+    .markdown-content table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.875rem; }
+    .markdown-content th, .markdown-content td { border: 1px solid var(--border); padding: 0.5rem; text-align: left; }
+    .markdown-content th { background: var(--surface-2); font-weight: 600; }
+    .markdown-content code { background: var(--surface-2); padding: 0.15rem 0.4rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; border: 1px solid var(--border); }
+
+    /* Code Block */
+    .code-block-wrapper { margin: 0.75rem 0; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); background: #0d1117; }
+    .code-header { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; background: #161b22; border-bottom: 1px solid #30363d; }
+    .code-lang { font-size: 0.75rem; color: #8b949e; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; }
+    .code-copy { padding: 0.25rem 0.625rem; background: #21262d; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; font-family: inherit; display: flex; align-items: center; gap: 0.375rem; }
+    .code-copy:hover { background: #30363d; }
+    .code-copy.copied { color: var(--success); border-color: var(--success); }
+    .code-block-wrapper pre { margin: 0; padding: 0.875rem 1rem; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.6; }
+    .code-block-wrapper pre code { background: none; padding: 0; border: none; }
+
+    /* Thinking Box */
+    .thinking-box { margin-bottom: 1rem; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-2); }
+    .thinking-header { display: flex; align-items: center; justify-content: space-between; padding: 0.625rem 0.875rem; cursor: pointer; user-select: none; transition: background 0.2s; }
+    .thinking-header:hover { background: var(--surface-3); }
+    .thinking-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 500; color: var(--warning); }
+    .thinking-chevron { transition: transform 0.3s ease; color: var(--text-3); }
+    .thinking-box.expanded .thinking-chevron { transform: rotate(180deg); }
+    .thinking-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.16,1,0.3,1); }
+    .thinking-box.expanded .thinking-content { max-height: 2000px; }
+    .thinking-inner { padding: 0.875rem; font-size: 0.9rem; line-height: 1.6; color: var(--text-2); border-top: 1px solid var(--border); white-space: pre-wrap; }
+
+    /* Loading States */
+    .loading-msg { display: flex; gap: 1rem; align-items: flex-start; }
+    .loading-bubble { padding: 1rem 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; gap: 0.75rem; min-width: 200px; }
+    .loading-text { font-size: 0.9rem; color: var(--text-2); display: flex; align-items: center; gap: 0.625rem; }
+    .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--text-2); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-dots { display: flex; gap: 4px; }
+    .loading-dots span { width: 6px; height: 6px; background: var(--text-3); border-radius: 50%; animation: dotBounce 1.4s ease-in-out infinite; }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotBounce { 0%,80%,100%{transform:scale(0.6);opacity:0.5} 40%{transform:scale(1);opacity:1} }
+
+    /* Input Area */
+    .input-area { border-top: 1px solid var(--border); background: rgba(var(--bg-rgb), 0.9); backdrop-filter: blur(20px); padding: 1rem 1.25rem 1.25rem; position: relative; z-index: 5; }
+    .input-wrapper { max-width: 800px; margin: 0 auto; }
+    .image-preview { display: none; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; padding: 0.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+    .image-preview.show { display: flex; }
+    .image-preview img { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+    .image-preview-info { flex: 1; font-size: 0.8rem; color: var(--text-2); }
+    .image-preview-remove { width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; color: var(--text-3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+    .image-preview-remove:hover { background: var(--surface-2); color: var(--error); }
+    .input-box { display: flex; align-items: flex-end; gap: 0.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.625rem 0.75rem; transition: var(--transition); position: relative; }
+    .input-box:focus-within { border-color: var(--border-hover); box-shadow: 0 0 0 3px var(--accent-glow), 0 0 40px rgba(255,255,255,0.02); }
+    [data-theme="light"] .input-box:focus-within { box-shadow: 0 0 0 3px var(--accent-glow), 0 0 40px rgba(0,0,0,0.02); }
+    .input-textarea { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-size: 0.95rem; line-height: 1.5; resize: none; min-height: 24px; max-height: 200px; font-family: inherit; padding: 0.25rem 0; }
+    .input-textarea::placeholder { color: var(--text-3); }
+    .input-actions { display: flex; align-items: center; gap: 0.25rem; flex-shrink: 0; padding-bottom: 0.125rem; }
+    .input-btn { width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent; color: var(--text-3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+    .input-btn:hover { background: var(--surface-2); color: var(--text); }
+    .input-btn.send { background: var(--text); color: var(--bg); }
+    .input-btn.send:hover { opacity: 0.9; }
+    .input-btn.send:disabled { opacity: 0.4; cursor: not-allowed; }
+    .input-btn.stop { background: var(--error); color: #fff; animation: pulseRed 2s infinite; }
+    @keyframes pulseRed { 0%,100%{box-shadow:0 0 0 0 rgba(255,68,68,0.4)} 50%{box-shadow:0 0 0 8px rgba(255,68,68,0)} }
+
+    /* Mode Bar */
+    .mode-bar { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .mode-btn { padding: 0.375rem 0.875rem; border-radius: 100px; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: var(--transition); font-family: inherit; display: flex; align-items: center; gap: 0.375rem; }
+    .mode-btn:hover { border-color: var(--border-hover); color: var(--text); }
+    .mode-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .mode-btn.active.instant { background: var(--success); border-color: var(--success); color: #000; }
+    .mode-btn.active.thinking { background: var(--warning); border-color: var(--warning); color: #000; }
+    .mode-btn.active.search { background: var(--info); border-color: var(--info); color: #fff; }
+
+    .disclaimer { text-align: center; font-size: 0.7rem; color: var(--text-3); margin-top: 0.5rem; }
+    .context-warning { display: none; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(255,145,0,0.08); border: 1px solid rgba(255,145,0,0.15); border-radius: var(--radius-sm); margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--warning); }
+    .context-warning.show { display: flex; }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9; backdrop-filter: blur(4px); }
+    .sidebar-overlay.show { display: block; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); box-shadow: 10px 0 40px rgba(0,0,0,0.3); }
+      .sidebar.open { transform: translateX(0); }
+      .messages-wrapper { padding: 0 1rem; }
+      .input-area { padding: 0.75rem 1rem 1rem; }
+      .msg-bubble { padding: 0.875rem 1rem; }
+      .welcome h2 { font-size: 1.5rem; }
+      .mode-bar { flex-wrap: wrap; }
+    }
+    @media (min-width: 769px) { .sidebar { transform: none !important; } .sidebar-overlay { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="app">
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M32 4L56 16V44L32 56L8 44V16L32 4Z" stroke="currentColor" stroke-width="2.5" fill="none"/>
+            <path d="M32 4V28" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M32 28L56 16" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M32 28L8 16" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M32 28V56" stroke="currentColor" stroke-width="2.5" stroke-dasharray="4 4"/>
+            <rect x="18" y="8" width="4" height="8" rx="1" fill="currentColor" opacity="0.8"/>
+            <rect x="42" y="8" width="4" height="8" rx="1" fill="currentColor" opacity="0.8"/>
+          </svg>
+        </div>
+        <span class="sidebar-title">OpenBox</span>
+      </div>
+      <button class="new-chat-btn" id="newChatBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Chat Baru
+      </button>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Riwayat Chat</div>
+        <ul class="chat-history" id="chatHistory"></ul>
+      </div>
+      <div class="sidebar-footer">
+        <div class="settings-group">
+          <span class="settings-label">Pengaturan</span>
+          <div class="settings-row">
+            <span>Mode Gelap</span>
+            <div class="toggle active" id="themeToggle"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="settings-row">
+            <span>Context Window</span>
+            <span style="font-size:0.75rem;color:var(--text-3);" id="tokenCount">0 token</span>
+          </div>
+        </div>
+        <button class="new-chat-btn" id="clearHistoryBtn" style="margin:0;background:transparent;color:var(--text-2);border:1px dashed var(--border);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Hapus Semua
+        </button>
+        <div class="user-profile" id="userProfile" style="margin-top:0.75rem;">
+          <div class="user-avatar" id="userAvatar">U</div>
+          <div class="user-info">
+            <div class="user-name" id="userName">User</div>
+            <div class="user-email" id="userEmail">user@openbox.ai</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-3);flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="header">
+        <div class="header-left">
+          <button class="header-btn" id="sidebarToggle" aria-label="Toggle sidebar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+          </button>
+          <span class="header-title" id="headerTitle">OpenBox Chat</span>
+        </div>
+        <div class="header-right">
+          <div class="mode-badge instant" id="modeBadge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <span id="modeBadgeText">Mode Instan</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="messages-container" id="messagesContainer">
+        <div class="messages-wrapper" id="messagesWrapper">
+          <div class="welcome" id="welcomeScreen">
+            <div class="welcome-logo">
+              <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs><linearGradient id="wl" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:white;stop-opacity:0.9"/><stop offset="50%" style="stop-color:white;stop-opacity:0.3"/><stop offset="100%" style="stop-color:white;stop-opacity:0.9"/></linearGradient></defs>
+                <path d="M40 6L68 20V52L40 66L12 52V20L40 6Z" stroke="url(#wl)" stroke-width="2.5" fill="none"/>
+                <path d="M40 6V32" stroke="url(#wl)" stroke-width="2.5"/>
+                <path d="M40 32L68 20" stroke="url(#wl)" stroke-width="2.5"/>
+                <path d="M40 32L12 20" stroke="url(#wl)" stroke-width="2.5"/>
+                <path d="M40 32V66" stroke="url(#wl)" stroke-width="2.5" stroke-dasharray="5 5"/>
+                <rect x="22" y="12" width="5" height="10" rx="1.5" fill="url(#wl)" opacity="0.9"/>
+                <rect x="53" y="12" width="5" height="10" rx="1.5" fill="url(#wl)" opacity="0.9"/>
+              </svg>
+            </div>
+            <h2>Halo, saya OpenBox</h2>
+            <p>Asisten AI futuristik Anda. Pilih mode dan mulai percakapan.</p>
+            <div class="suggestion-chips">
+              <button class="chip" data-prompt="Jelaskan konsep black hole dalam bahasa sederhana">🌌 Jelaskan black hole</button>
+              <button class="chip" data-prompt="Buatkan kode Python untuk web scraper sederhana">🐍 Kode Python scraper</button>
+              <button class="chip" data-prompt="Apa perbedaan antara REST API dan GraphQL?">🔌 REST vs GraphQL</button>
+              <button class="chip" data-prompt="Tulis email formal untuk lamaran kerja">✉️ Email lamaran kerja</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-wrapper">
+          <div class="context-warning" id="contextWarning">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
+            Konteks panjang terdeteksi. Pesan lama akan di-ringkas otomatis.
+          </div>
+
+          <div class="mode-bar">
+            <button class="mode-btn active instant" data-mode="instant" id="modeInstant">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              Instan
+            </button>
+            <button class="mode-btn" data-mode="thinking" id="modeThinking">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6v6l4 2"/></svg>
+              Thinking
+            </button>
+            <button class="mode-btn" data-mode="search" id="modeSearch">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              Search
+            </button>
+          </div>
+
+          <div class="image-preview" id="imagePreview">
+            <img id="previewImg" src="" alt="Preview">
+            <span class="image-preview-info">Gambar siap dikirim</span>
+            <button class="image-preview-remove" id="removeImage">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <div class="input-box">
+            <textarea class="input-textarea" id="messageInput" placeholder="Tanyakan apa saja..." rows="1" autocomplete="off"></textarea>
+            <div class="input-actions">
+              <input type="file" id="imageInput" accept="image/*" style="display:none;">
+              <button class="input-btn" id="uploadBtn" title="Unggah gambar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </button>
+              <button class="input-btn send" id="sendBtn" title="Kirim">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+          <p class="disclaimer">OpenBox dapat melakukan kesalahan. Cek konfirmasi informasi penting.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ========================
+    // OPENBOX CHAT APP
+    // Non-streaming version
+    // ========================
+
+    const App = {
+      state: {
+        currentChatId: null,
+        chats: [],
+        messages: [],
+        isLoading: false,
+        currentMode: 'instant',
+        theme: 'dark',
+        sidebarOpen: false,
+        contextLimit: 8000,
+        uploadedImage: null,
+        user: null,
+        abortController: null,
+      },
+
+      init() {
+        this.loadTheme();
+        this.loadUser();
+        this.loadChats();
+        this.bindEvents();
+        this.renderSidebar();
+        this.updateTokenCount();
+
+        // Auto-resize textarea
+        const ta = document.getElementById('messageInput');
+        ta.addEventListener('input', () => {
+          ta.style.height = 'auto';
+          ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
+        });
+
+        if (this.state.chats.length === 0) this.createNewChat();
+        else this.loadChat(this.state.chats[0].id);
+      },
+
+      // ===== THEME =====
+      loadTheme() {
+        const saved = localStorage.getItem('openbox-theme') || 'dark';
+        this.state.theme = saved;
+        document.documentElement.setAttribute('data-theme', saved);
+        const toggle = document.getElementById('themeToggle');
+        if (saved === 'light') toggle.classList.remove('active');
+        else toggle.classList.add('active');
+      },
+
+      toggleTheme() {
+        this.state.theme = this.state.theme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', this.state.theme);
+        localStorage.setItem('openbox-theme', this.state.theme);
+        document.getElementById('themeToggle').classList.toggle('active');
+      },
+
+      // ===== USER =====
+      loadUser() {
+        const saved = localStorage.getItem('openbox-user');
+        this.state.user = saved ? JSON.parse(saved) : { name: 'User', email: 'user@openbox.ai' };
+        document.getElementById('userName').textContent = this.state.user.name;
+        document.getElementById('userEmail').textContent = this.state.user.email;
+        document.getElementById('userAvatar').textContent = this.state.user.name.charAt(0).toUpperCase();
+      },
+
+      // ===== SIDEBAR =====
+      toggleSidebar() {
+        this.state.sidebarOpen = !this.state.sidebarOpen;
+        document.getElementById('sidebar').classList.toggle('open', this.state.sidebarOpen);
+        document.getElementById('sidebarOverlay').classList.toggle('show', this.state.sidebarOpen);
+      },
+
+      // ===== CHAT MANAGEMENT =====
+      loadChats() {
+        const saved = localStorage.getItem('openbox-chats');
+        this.state.chats = saved ? JSON.parse(saved) : [];
+      },
+
+      saveChats() {
+        localStorage.setItem('openbox-chats', JSON.stringify(this.state.chats));
+      },
+
+      createNewChat() {
+        const id = 'chat_' + Date.now();
+        const chat = { id, title: 'Chat Baru', createdAt: Date.now(), messages: [] };
+        this.state.chats.unshift(chat);
+        this.saveChats();
+        this.loadChat(id);
+        this.renderSidebar();
+      },
+
+      loadChat(id) {
+        const chat = this.state.chats.find(c => c.id === id);
+        if (!chat) return;
+        this.state.currentChatId = id;
+        this.state.messages = chat.messages || [];
+        this.renderMessages();
+        this.renderSidebar();
+        this.updateTokenCount();
+        if (window.innerWidth <= 768) {
+          document.getElementById('sidebar').classList.remove('open');
+          document.getElementById('sidebarOverlay').classList.remove('show');
+        }
+      },
+
+      deleteChat(id, e) {
+        e?.stopPropagation();
+        if (!confirm('Hapus chat ini?')) return;
+        this.state.chats = this.state.chats.filter(c => c.id !== id);
+        this.saveChats();
+        if (this.state.currentChatId === id) {
+          if (this.state.chats.length > 0) this.loadChat(this.state.chats[0].id);
+          else this.createNewChat();
+        }
+        this.renderSidebar();
+      },
+
+      renameChat(id, e) {
+        e?.stopPropagation();
+        const chat = this.state.chats.find(c => c.id === id);
+        if (!chat) return;
+        const newTitle = prompt('Nama chat:', chat.title);
+        if (newTitle?.trim()) { chat.title = newTitle.trim(); this.saveChats(); this.renderSidebar(); }
+      },
+
+      updateChatTitle(content) {
+        const chat = this.state.chats.find(c => c.id === this.state.currentChatId);
+        if (chat && chat.title === 'Chat Baru' && content) {
+          chat.title = content.slice(0, 30) + (content.length > 30 ? '...' : '');
+          this.saveChats();
+          this.renderSidebar();
+        }
+      },
+
+      clearAllHistory() {
+        if (!confirm('Hapus SEMUA riwayat chat?')) return;
+        this.state.chats = [];
+        this.saveChats();
+        this.createNewChat();
+      },
+
+      saveCurrentChat() {
+        const chat = this.state.chats.find(c => c.id === this.state.currentChatId);
+        if (chat) { chat.messages = this.state.messages; chat.updatedAt = Date.now(); this.saveChats(); }
+      },
+
+      // ===== RENDER SIDEBAR =====
+      renderSidebar() {
+        const list = document.getElementById('chatHistory');
+        list.innerHTML = '';
+        this.state.chats.forEach(chat => {
+          const li = document.createElement('li');
+          li.className = 'chat-item' + (chat.id === this.state.currentChatId ? ' active' : '');
+          li.innerHTML = `
+            <svg class="chat-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="chat-item-text">${this.escapeHtml(chat.title)}</span>
+            <div class="chat-item-actions">
+              <button class="chat-item-btn" title="Rename">✎</button>
+              <button class="chat-item-btn" title="Delete">🗑</button>
+            </div>`;
+          li.addEventListener('click', () => this.loadChat(chat.id));
+          li.querySelector('.chat-item-actions button:first-child').addEventListener('click', (e) => this.renameChat(chat.id, e));
+          li.querySelector('.chat-item-actions button:last-child').addEventListener('click', (e) => this.deleteChat(chat.id, e));
+          list.appendChild(li);
+        });
+      },
+
+      // ===== RENDER MESSAGES =====
+      renderMessages() {
+        const wrapper = document.getElementById('messagesWrapper');
+        if (this.state.messages.length === 0) {
+          wrapper.innerHTML = this.getWelcomeHTML();
+          this.bindChipEvents();
+          return;
+        }
+
+        wrapper.innerHTML = '';
+        this.state.messages.forEach((msg, idx) => {
+          wrapper.appendChild(this.createMessageElement(msg, idx));
+        });
+
+        this.postProcessMarkdown();
+        this.scrollToBottom();
+      },
+
+      getWelcomeHTML() {
+        return `
+          <div class="welcome" id="welcomeScreen">
+            <div class="welcome-logo">
+              <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs><linearGradient id="wl" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:white;stop-opacity:0.9"/><stop offset="50%" style="stop-color:white;stop-opacity:0.3"/><stop offset="100%" style="stop-color:white;stop-opacity:0.9"/></linearGradient></defs>
+                <path d="M40 6L68 20V52L40 66L12 52V20L40 6Z" stroke="url(#wl)" stroke-width="2.5" fill="none"/>
+                <path d="M40 6V32" stroke="url(#wl)" stroke-width="2.5"/>
+                <path d="M40 32L68 20" stroke="url(#wl)" stroke-width="2.5"/>
+                <path d="M40 32L12 20" stroke="url(#wl)" stroke-width="2.5"/>
+                <path d="M40 32V66" stroke="url(#wl)" stroke-width="2.5" stroke-dasharray="5 5"/>
+                <rect x="22" y="12" width="5" height="10" rx="1.5" fill="url(#wl)" opacity="0.9"/>
+                <rect x="53" y="12" width="5" height="10" rx="1.5" fill="url(#wl)" opacity="0.9"/>
+              </svg>
+            </div>
+            <h2>Halo, saya OpenBox</h2>
+            <p>Asisten AI futuristik Anda. Pilih mode dan mulai percakapan.</p>
+            <div class="suggestion-chips">
+              <button class="chip" data-prompt="Jelaskan konsep black hole dalam bahasa sederhana">🌌 Jelaskan black hole</button>
+              <button class="chip" data-prompt="Buatkan kode Python untuk web scraper sederhana">🐍 Kode Python scraper</button>
+              <button class="chip" data-prompt="Apa perbedaan antara REST API dan GraphQL?">🔌 REST vs GraphQL</button>
+              <button class="chip" data-prompt="Tulis email formal untuk lamaran kerja">✉️ Email lamaran kerja</button>
+            </div>
+          </div>`;
+      },
+
+      createMessageElement(msg, idx) {
+        const div = document.createElement('div');
+        div.className = `message ${msg.role}`;
+        div.dataset.index = idx;
+
+        const avatar = msg.role === 'user'
+          ? `<div class="msg-avatar">${this.state.user.name.charAt(0).toUpperCase()}</div>`
+          : `<div class="msg-avatar" style="background:var(--text);color:var(--bg);font-weight:700;">O</div>`;
+
+        let contentHtml = '';
+
+        // Thinking box
+        if (msg.role === 'ai' && msg.thinking) {
+          contentHtml += `
+            <div class="thinking-box" id="think-${idx}">
+              <div class="thinking-header" onclick="App.toggleThinking('think-${idx}')">
+                <span class="thinking-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6v6l4 2"/></svg>
+                  Thinking
+                </span>
+                <svg class="thinking-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+              <div class="thinking-content"><div class="thinking-inner">${this.escapeHtml(msg.thinking)}</div></div>
+            </div>`;
+        }
+
+        // Image
+        if (msg.image) contentHtml += `<img src="${msg.image}" class="msg-image" alt="Uploaded image">`;
+
+        // Content
+        if (msg.role === 'ai') {
+          const parsed = marked.parse(msg.content || '');
+          contentHtml += `<div class="msg-bubble"><div class="markdown-content">${parsed}</div></div>`;
+        } else {
+          contentHtml += `<div class="msg-bubble">${this.escapeHtml(msg.content)}</div>`;
+        }
+
+        const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
+        div.innerHTML = `${avatar}<div class="msg-content">${contentHtml}<div class="msg-meta">${time}</div></div>`;
+        return div;
+      },
+
+      toggleThinking(id) {
+        document.getElementById(id).classList.toggle('expanded');
+      },
+
+      // ===== CREATE LOADING MESSAGE =====
+      createLoadingMessage() {
+        const mode = this.state.currentMode;
+        let loadingText = 'Berpikir';
+        let subText = '';
+
+        if (mode === 'instant') {
+          loadingText = 'Memproses';
+          subText = '';
+        } else if (mode === 'thinking') {
+          loadingText = 'Berpikir';
+          subText = 'Menganalisis permintaan Anda...';
+        } else if (mode === 'search') {
+          loadingText = 'Mencari';
+          subText = 'Mencari informasi di web...';
+        }
+
+        const div = document.createElement('div');
+        div.className = 'message ai';
+        div.id = 'loadingMessage';
+        div.innerHTML = `
+          <div class="msg-avatar" style="background:var(--text);color:var(--bg);font-weight:700;">O</div>
+          <div class="msg-content">
+            <div class="loading-bubble">
+              <div class="loading-text">
+                <div class="spinner"></div>
+                <span>${loadingText}...</span>
+              </div>
+              ${subText ? `<div style="font-size:0.8rem;color:var(--text-3);padding-left:24px;">${subText}</div>` : ''}
+              <div class="loading-dots" style="padding-left:24px;"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+        `;
+        return div;
+      },
+
+      // ===== SEND MESSAGE (NON-STREAMING) =====
+      async sendMessage() {
+        const input = document.getElementById('messageInput');
+        const text = input.value.trim();
+        if ((!text && !this.state.uploadedImage) || this.state.isLoading) return;
+
+        // Add user message
+        const userMsg = { role: 'user', content: text, image: this.state.uploadedImage, timestamp: Date.now() };
+        this.state.messages.push(userMsg);
+        this.updateChatTitle(text);
+        this.saveCurrentChat();
+        this.renderMessages();
+
+        input.value = '';
+        input.style.height = 'auto';
+        this.removeImage();
+
+        // Manage context
+        this.manageContextWindow();
+
+        // Show loading
+        this.state.isLoading = true;
+        this.updateUIState();
+        const wrapper = document.getElementById('messagesWrapper');
+        const loadingEl = this.createLoadingMessage();
+        wrapper.appendChild(loadingEl);
+        this.scrollToBottom();
+
+        try {
+          await this.callAPI(userMsg);
+        } catch (error) {
+          // Remove loading
+          loadingEl.remove();
+
+          // Add error message
+          const errorMsg = {
+            role: 'ai',
+            content: 'Maaf, terjadi kesalahan: ' + error.message + '\n\nPastikan API key OpenRouter sudah dikonfigurasi dengan benar di server.',
+            timestamp: Date.now(),
+          };
+          this.state.messages.push(errorMsg);
+          this.saveCurrentChat();
+          this.renderMessages();
+        } finally {
+          this.state.isLoading = false;
+          this.updateUIState();
+          this.updateTokenCount();
+        }
+      },
+
+      // ===== API CALL (FETCH FULL RESPONSE) =====
+      async callAPI(lastUserMsg) {
+        const apiMessages = this.state.messages
+          .filter(m => m.role === 'user' || m.role === 'ai')
+          .map(m => ({
+            role: m.role === 'ai' ? 'assistant' : 'user',
+            content: m.content,
+            isLastUser: m === lastUserMsg,
+          }));
+
+        this.state.abortController = new AbortController();
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: apiMessages,
+            mode: this.state.currentMode,
+            image: lastUserMsg.image,
+          }),
+          signal: this.state.abortController.signal,
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errText}`);
+        }
+
+        // Read full SSE stream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullText = '';
+        let thinkingText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+            const data = trimmed.slice(6);
+            if (data === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.error) throw new Error(parsed.message || 'API Error');
+              if (parsed.content) fullText += parsed.content;
+              if (parsed.reasoning) thinkingText += parsed.reasoning;
+            } catch (e) { /* ignore parse errors */ }
+          }
+        }
+
+        // Remove loading element
+        const loadingEl = document.getElementById('loadingMessage');
+        if (loadingEl) loadingEl.remove();
+
+        // Process final response
+        const aiMsg = { role: 'ai', content: '', timestamp: Date.now() };
+
+        if (this.state.currentMode === 'thinking') {
+          const thinkMatch = fullText.match(/<thinking>([\s\S]*?)<\/thinking>/);
+          if (thinkMatch) {
+            aiMsg.thinking = thinkMatch[1].trim();
+            aiMsg.content = fullText.replace(/<thinking>[\s\S]*?<\/thinking>/, '').trim();
+          } else {
+            aiMsg.content = fullText;
+          }
+        } else {
+          aiMsg.content = fullText;
+        }
+
+        this.state.messages.push(aiMsg);
+        this.saveCurrentChat();
+        this.renderMessages();
+      },
+
+      // ===== STOP GENERATION =====
+      stopGeneration() {
+        if (this.state.abortController) {
+          this.state.abortController.abort();
+          const loadingEl = document.getElementById('loadingMessage');
+          if (loadingEl) {
+            loadingEl.remove();
+            const cancelledMsg = { role: 'ai', content: '_[Dibatalkan oleh pengguna]_', timestamp: Date.now() };
+            this.state.messages.push(cancelledMsg);
+            this.saveCurrentChat();
+            this.renderMessages();
+          }
+        }
+        this.state.isLoading = false;
+        this.updateUIState();
+      },
+
+      // ===== MODE SWITCHING =====
+      setMode(mode) {
+        this.state.currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.mode === mode);
+          btn.classList.remove('instant', 'thinking', 'search');
+          if (btn.dataset.mode === mode) btn.classList.add(mode);
+        });
+
+        const badge = document.getElementById('modeBadge');
+        const badgeText = document.getElementById('modeBadgeText');
+        badge.className = 'mode-badge ' + mode;
+        const labels = { instant: 'Mode Instan', thinking: 'Mode Thinking', search: 'Mode Search' };
+        badgeText.textContent = labels[mode];
+      },
+
+      // ===== IMAGE =====
+      handleImageUpload(file) {
+        if (!file || !file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.state.uploadedImage = e.target.result;
+          document.getElementById('previewImg').src = e.target.result;
+          document.getElementById('imagePreview').classList.add('show');
+        };
+        reader.readAsDataURL(file);
+      },
+
+      removeImage() {
+        this.state.uploadedImage = null;
+        document.getElementById('imagePreview').classList.remove('show');
+        document.getElementById('imageInput').value = '';
+      },
+
+      // ===== CONTEXT WINDOW =====
+      manageContextWindow() {
+        const estimateTokens = (text) => Math.ceil((text || '').length / 4);
+        let total = 0;
+        this.state.messages.forEach(m => { total += estimateTokens(m.content); if (m.image) total += 500; });
+
+        const warning = document.getElementById('contextWarning');
+        if (total > this.state.contextLimit * 0.8) warning.classList.add('show');
+        else warning.classList.remove('show');
+
+        if (total > this.state.contextLimit) {
+          let removed = 0;
+          while (total > this.state.contextLimit * 0.7 && this.state.messages.length > 2) {
+            const rm = this.state.messages.shift();
+            total -= estimateTokens(rm.content);
+            removed++;
+          }
+          if (removed > 0) {
+            this.state.messages.unshift({ role: 'system', content: '[Konteks percakapan sebelumnya telah di-ringkas.]', timestamp: Date.now() });
+            this.saveCurrentChat();
+          }
+        }
+      },
+
+      updateTokenCount() {
+        const estimateTokens = (text) => Math.ceil((text || '').length / 4);
+        let total = 0;
+        this.state.messages.forEach(m => total += estimateTokens(m.content));
+        document.getElementById('tokenCount').textContent = `~${total} token`;
+      },
+
+      // ===== UI STATE =====
+      updateUIState() {
+        const sendBtn = document.getElementById('sendBtn');
+        if (this.state.isLoading) {
+          sendBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="6" width="12" height="12"/></svg>';
+          sendBtn.classList.add('stop');
+          sendBtn.classList.remove('send');
+          sendBtn.title = 'Berhenti';
+        } else {
+          sendBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+          sendBtn.classList.remove('stop');
+          sendBtn.classList.add('send');
+          sendBtn.title = 'Kirim';
+        }
+      },
+
+      scrollToBottom() {
+        const container = document.getElementById('messagesContainer');
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      },
+
+      // ===== MARKDOWN POST-PROCESSING =====
+      postProcessMarkdown() {
+        document.querySelectorAll('.markdown-content pre').forEach(pre => {
+          if (pre.parentElement.classList.contains('code-block-wrapper')) return;
+          const code = pre.querySelector('code');
+          const lang = code ? (code.className.match(/language-(\w+)/)?.[1] || '') : '';
+          const wrapper = document.createElement('div');
+          wrapper.className = 'code-block-wrapper';
+          const header = document.createElement('div');
+          header.className = 'code-header';
+          header.innerHTML = `<span class="code-lang">${lang || 'code'}</span>`;
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'code-copy';
+          copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+          copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(pre.textContent).then(() => {
+              copyBtn.classList.add('copied');
+              copyBtn.textContent = '✓ Copied';
+              setTimeout(() => {
+                copyBtn.classList.remove('copied');
+                copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+              }, 2000);
+            });
+          });
+          header.appendChild(copyBtn);
+          wrapper.appendChild(header);
+          wrapper.appendChild(pre.cloneNode(true));
+          pre.replaceWith(wrapper);
+        });
+        document.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+      },
+
+      // ===== UTILS =====
+      escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      },
+
+      bindChipEvents() {
+        document.querySelectorAll('.chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            document.getElementById('messageInput').value = chip.dataset.prompt;
+            this.sendMessage();
+          });
+        });
+      },
+
+      // ===== EVENT BINDING =====
+      bindEvents() {
+        document.getElementById('sidebarToggle').addEventListener('click', () => this.toggleSidebar());
+        document.getElementById('sidebarOverlay').addEventListener('click', () => this.toggleSidebar());
+        document.getElementById('newChatBtn').addEventListener('click', () => this.createNewChat());
+        document.getElementById('clearHistoryBtn').addEventListener('click', () => this.clearAllHistory());
+        document.getElementById('themeToggle').addEventListener('click', () => this.toggleTheme());
+        document.getElementById('userProfile').addEventListener('click', () => {
+          if (confirm('Keluar dari akun?')) { localStorage.removeItem('openbox-user'); window.location.href = 'login.html'; }
+        });
+
+        const input = document.getElementById('messageInput');
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); } });
+
+        document.getElementById('sendBtn').addEventListener('click', () => {
+          if (this.state.isLoading) this.stopGeneration();
+          else this.sendMessage();
+        });
+
+        document.getElementById('uploadBtn').addEventListener('click', () => document.getElementById('imageInput').click());
+        document.getElementById('imageInput').addEventListener('change', (e) => { if (e.target.files[0]) this.handleImageUpload(e.target.files[0]); });
+        document.getElementById('removeImage').addEventListener('click', () => this.removeImage());
+
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+          btn.addEventListener('click', () => this.setMode(btn.dataset.mode));
+        });
+
+        document.addEventListener('paste', (e) => {
+          const items = e.clipboardData?.items;
+          if (!items) return;
+          for (const item of items) {
+            if (item.type.startsWith('image/')) { const file = item.getAsFile(); if (file) this.handleImageUpload(file); break; }
+          }
+        });
+
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.state.isLoading) this.stopGeneration(); });
+      },
+    };
+
+    marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
+    document.addEventListener('DOMContentLoaded', () => App.init());
+  </script>
+</body>
+</html>
