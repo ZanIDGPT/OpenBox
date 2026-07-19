@@ -1,0 +1,14 @@
+{
+  "name": "openbox-chat",
+  "version": "1.0.0",
+  "description": "OpenBox - Futuristic AI Chat Application",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
